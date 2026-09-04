@@ -1,0 +1,22 @@
+# Python & Environments
+**/__pycache__/
+*.py[cod]
+.venv/
+backend/.venv/
+*.egg-info/
+
+# Environments & Secrets
+.env
+*.env
+!.env.example
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# OS & Editors
+.DS_Store
+.idea/
+.vscode/

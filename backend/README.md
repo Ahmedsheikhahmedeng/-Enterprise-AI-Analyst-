@@ -1,12 +1,22 @@
-# Enterprise AI Analyst — Backend Foundation
+# Enterprise AI Analyst — Backend Foundation & Infrastructure
 
-> Task 1: Clean, production-oriented FastAPI foundation with structured logging, configuration validation, standard exception envelopes, and health checks.
+> Tasks 0, 1 & 2: Production-oriented FastAPI backend foundation with asynchronous PostgreSQL, Redis, Qdrant infrastructure connectivity, lifespan management, health/liveness/readiness probes, and Docker Compose topology.
 
 ---
 
 ## 🏗️ Architecture Baseline
 
-This backend service follows the architectural principles defined in [docs/architecture/task_0_backend_architecture.md](../docs/architecture/task_0_backend_architecture.md).
+This backend service strictly adheres to the architectural blueprint defined in [docs/architecture/task_0_backend_architecture.md](../docs/architecture/task_0_backend_architecture.md).
+
+---
+
+## 📦 Backing Infrastructure Services (Task 2)
+
+| Service | Engine Version | Role in Architecture |
+| :--- | :--- | :--- |
+| **PostgreSQL** | `16-alpine` | Primary transactional and relational store for users, orgs, datasets, and audits. |
+| **Redis** | `7-alpine` | High-speed cache, distributed rate limiting, and async broker. |
+| **Qdrant** | `latest` | High-performance vector database powering dense and sparse hybrid retrieval. |
 
 ---
 
@@ -14,16 +24,15 @@ This backend service follows the architectural principles defined in [docs/archi
 
 ### 1. Prerequisites
 - Python 3.12+
-- Docker & Docker Compose (optional for containerized runtime)
+- Docker & Docker Compose (for local containerized infrastructure)
 
 ### 2. Environment Configuration
-Copy the sample environment variables:
+Copy the sample environment configuration:
 ```bash
 cp .env.example .env
 ```
 
-### 3. Install Dependencies
-Create and activate a virtual environment:
+### 3. Install Python Dependencies
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -31,26 +40,63 @@ pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 
-### 4. Run Development Server
+### 4. Docker Compose Operations
+Start all backing infrastructure services and backend container:
+```bash
+docker compose up --build -d
+```
+
+Check container status and health probes:
+```bash
+docker compose ps
+```
+
+View aggregated service logs:
+```bash
+docker compose logs -f
+```
+
+Stop containers gracefully:
+```bash
+docker compose down
+```
+
+Stop containers and remove persistent volumes (resets PostgreSQL and Qdrant data):
+```bash
+docker compose down -v
+```
+
+### 5. Running Natively (Without Containerized Backend)
+If backing services are running natively or in standalone containers:
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Interactive API documentation will be accessible at:
-- Swagger UI: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
-- ReDoc: [http://localhost:8000/api/v1/redoc](http://localhost:8000/api/v1/redoc)
-- Health Check: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
+---
+
+## 🩺 Health Check Endpoints
+
+| Endpoint | Purpose | Semantics |
+| :--- | :--- | :--- |
+| `GET /api/v1/health` | Basic Service Health | Backward-compatible baseline health returning service name and version. |
+| `GET /api/v1/health/live` | Liveness Probe | Indicates the application event loop is alive and responsive. |
+| `GET /api/v1/health/ready` | Readiness Probe | Evaluates reachability of **PostgreSQL**, **Redis**, and **Qdrant**. Returns `200 OK` when all dependencies are reachable, or `503 Service Unavailable` if any dependency is offline. |
 
 ---
 
 ## 🧪 Quality & Testing Commands
 
-Run the full automated test suite:
+Run the unit test suite:
 ```bash
 pytest
 ```
 
-Run code formatting and linter checks with Ruff:
+Run integration tests against live infrastructure services (when Docker is running):
+```bash
+RUN_INTEGRATION_TESTS=true pytest tests/integration/
+```
+
+Run linter and formatting checks:
 ```bash
 ruff check .
 ruff format --check .
@@ -58,29 +104,10 @@ ruff format --check .
 
 Run static type checking with MyPy:
 ```bash
-mypy app
+mypy app tests
 ```
 
-Verify syntax and compile all application modules:
+Verify syntax compilation:
 ```bash
 python -m compileall app
-```
-
----
-
-## 🐳 Docker Deployment
-
-Build the container image:
-```bash
-docker build -t enterprise-ai-analyst-backend .
-```
-
-Run the container:
-```bash
-docker run -p 8000:8000 --env-file .env enterprise-ai-analyst-backend
-```
-
-Run via Docker Compose:
-```bash
-docker compose up --build
 ```

@@ -16,6 +16,10 @@ dependencies = [
     "pydantic>=2.7.0",
     "pydantic-settings>=2.2.0",
     "structlog>=24.1.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.4",
+    "qdrant-client>=1.9.0",
 ]
 
 [project.optional-dependencies]

@@ -19,8 +19,8 @@ The complete architectural blueprint and engineering specification for this plat
 | :--- | :--- | :--- | :---: |
 | **Task 0** | **Architectural Design & Tech Spec** | System boundaries, 4-layer architecture, multi-tenancy, RAG, SQL safety, agents, telemetry, DoD | **LOCKED & APPROVED ✅** |
 | **Task 1** | **Backend Foundation** | Project setup, `pyproject.toml`, folder structure, config, structured logging, error envelopes, health check, Docker base | **COMPLETED & VERIFIED ✅** |
-| **Task 2** | **Database & Multi-Tenancy Foundation** | PostgreSQL connection pool, SQLAlchemy async, Alembic migrations, tenant isolation models | **Next Up 🎯** |
-| **Task 3** | **Auth, RBAC & Organization Management** | JWT authentication, RBAC dependencies (Admin/Analyst/Viewer), audit trail | Pending |
+| **Task 2** | **Backend Infrastructure Layer** | PostgreSQL async engine/pool, Redis client, Qdrant client, lifespan, liveness & readiness probes, Docker Compose | **COMPLETED & VERIFIED ✅** |
+| **Task 3** | **PostgreSQL Data Model, SQLAlchemy 2 & Alembic** | Multi-tenancy models, Alembic migrations, tenant isolation filters, database test fixtures | **Next Up 🎯** |
 | **Task 4** | **Storage & Document Ingestion Pipeline** | Local/S3 storage provider, document parsers, chunking strategies, ingestion status machine | Pending |
 | **Task 5** | **Vector Store & Hybrid RAG Engine** | Qdrant client, dense + sparse indexing, hybrid fusion (RRF), cross-encoder reranking | Pending |
 | **Task 6** | **Text-to-SQL & Data Analytics Engine** | Safe AST SQL validator, read-only executor, sandboxed Python/Pandas data analyst | Pending |

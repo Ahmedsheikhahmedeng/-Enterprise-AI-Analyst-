@@ -20,6 +20,7 @@ dependencies = [
     "asyncpg>=0.29.0",
     "redis>=5.0.4",
     "qdrant-client>=1.9.0",
+    "alembic>=1.13.1",
 ]
 
 [project.optional-dependencies]

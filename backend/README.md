@@ -86,6 +86,80 @@ EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS=24
 
 ---
 
+## 🛡️ Role-Based Access Control (RBAC) & Authorization (Task 5)
+
+The authorization layer answers: **"What is this authenticated user allowed to do?"**
+It builds on the authentication from Task 4 while maintaining strict architectural decoupling.
+
+### 1. Authorization Architecture
+
+```text
+HTTP Request
+     │
+     ▼
+[Authentication] ───► get_current_user (JWT Bearer Token validation)
+     │                └── Yields 401 Unauthorized if missing, malformed, or expired
+     ▼
+[Context Resolution] ───► resolve_organization_context (via X-Organization-ID header)
+     │                    └── Resolves single org or yields 403 Forbidden
+     ▼
+[Permission Check] ───► require_permission("documents.read")
+     │                  └── Queries effective permissions in single SQL query
+     │                  └── Yields 403 Forbidden with generic contract if unauthorized
+     ▼
+[Route Execution] ───► Service / Repository Layer
+```
+
+### 2. System Permission Catalog (26 Permissions)
+
+| Category | Permissions | Description |
+| :--- | :--- | :--- |
+| **Users** | `users.read`, `users.manage`, `users.invite`, `users.remove` | User directory and administrative membership management |
+| **Organization** | `organization.read`, `organization.manage` | Organization settings and configuration |
+| **Documents** | `documents.read`, `documents.write`, `documents.delete`, `documents.manage` | Document upload, download, deletion, and pipeline administration |
+| **Datasets** | `datasets.read`, `datasets.write`, `datasets.delete` | Structured data schemas and records management |
+| **Data Sources** | `data_sources.read`, `data_sources.write`, `data_sources.delete` | External database and integration connectors |
+| **Reports** | `reports.read`, `reports.create`, `reports.update`, `reports.delete` | Enterprise report generation, viewing, and deletion |
+| **Analytics** | `analytics.read`, `analytics.execute` | Analytic metrics and query executions |
+| **AI** | `ai.chat`, `ai.analyze` | Interactive chat and deep autonomous AI analysis |
+| **Audit & Usage** | `audit.read`, `usage.read` | Organization audit logging and token consumption inspection |
+
+### 3. Role Definitions & Default Mappings
+
+- **`Admin`**: Full access to all 26 permissions across users, organization, data, AI, and audit.
+- **`Analyst`**: Operational analytics and AI: `organization.read`, `documents.read/write`, `datasets.read/write`, `data_sources.read`, `reports.read/create`, `analytics.read/execute`, `ai.chat/analyze`.
+- **`Viewer`**: Read-only visibility: `organization.read`, `documents.read`, `datasets.read`, `reports.read`, `analytics.read`, `ai.chat`.
+
+### 4. Security Principles & Enforcement
+- **401 vs 403**: Unauthenticated, invalid, or expired tokens always yield `401 Unauthorized`. Authenticated users lacking required permissions or valid tenant membership always yield `403 Forbidden`.
+- **Generic Error Contract**: Authorization denial responses never leak required permission names:
+  `{"error": {"code": "FORBIDDEN", "message": "You do not have permission to perform this action.", "request_id": "..."}}`
+- **Context-Scoped Permissions**: A user can belong to multiple organizations with different roles (e.g. Analyst in Org A, Viewer in Org B). Permissions are strictly evaluated against the target organization context.
+- **Cross-Organization Protection**: Roles scoped to Organization B cannot grant permissions to a member in Organization A.
+- **No N+1 Queries**: Effective permissions are retrieved with a single joined query across `permissions`, `role_permissions`, `roles`, and `organization_members`.
+- **Structured Audit Logging**: Authorization denials and role assignments/removals emit structured audit logs (`audit_event="role_assigned"`, `audit_event="authorization_denied"`) without logging sensitive secrets.
+
+### 5. RBAC Seeding
+Seed system permissions, roles, and default mappings idempotently:
+```bash
+python scripts/seed_rbac.py
+```
+
+### 6. Demonstration & Management Endpoints
+
+| Method | Endpoint | Required Permission | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/admin/users` | `users.manage` | Admin user management access demonstration |
+| `GET` | `/api/v1/rbac/test/read-document` | `documents.read` | Document read access demonstration |
+| `POST` | `/api/v1/rbac/test/create-report` | `reports.create` | Report creation access demonstration |
+| `GET` | `/api/v1/rbac/permissions` | Authenticated | Inspect caller's effective permissions for active organization |
+| `GET` | `/api/v1/rbac/roles` | `organization.read` | List available system and organization roles |
+| `POST` | `/api/v1/rbac/roles/assign` | `users.manage` | Assign or update member role in organization |
+| `POST` | `/api/v1/rbac/roles/remove` | `users.manage` | Remove member role and membership in organization |
+
+
+---
+
 ## 📦 Backing Infrastructure Services (Task 2)
 
 | Service | Engine Version | Role in Architecture |

@@ -1,6 +1,6 @@
-# Enterprise AI Analyst — Backend Foundation, Infrastructure & Data Architecture
+# Enterprise AI Analyst — Backend Foundation, Infrastructure, Data & Auth Architecture
 
-> Tasks 0, 1, 2 & 3: Production-oriented FastAPI backend with asynchronous PostgreSQL, Redis, Qdrant infrastructure connectivity, health probes, SQLAlchemy 2 ORM domain models, and Alembic database migrations.
+> Tasks 0, 1, 2, 3 & 4: Production-oriented FastAPI backend with asynchronous PostgreSQL, Redis, Qdrant infrastructure connectivity, health probes, SQLAlchemy 2 ORM domain models, Alembic migrations, and Argon2id/JWT identity authentication with refresh token rotation and reuse detection.
 
 ---
 
@@ -42,6 +42,47 @@ The relational data model is built using modern **SQLAlchemy 2 (`Mapped[]`, `map
 - Every tenant-owned table explicitly includes `organization_id` (foreign key to `organizations.id` with `ON DELETE RESTRICT` or `CASCADE` depending on business domain).
 - Global/system resources (`users`, `permissions`) remain outside direct tenant scoping; user membership is maintained through `organization_members`.
 - Queries enforce multi-tenant isolation through composite indexes such as `(organization_id, created_at)`.
+
+---
+
+## 🔐 Authentication System (Task 4)
+
+The authentication system is dedicated strictly to **identity verification** (who the user is). RBAC and tenant-level authorization remain separated into Tasks 5 and 6.
+
+### 1. Security Architecture
+- **Argon2id Hashing**: Passwords are never stored or logged in plaintext. Baseline policy enforces $\ge 8$ characters.
+- **Short-Lived JWT Access Tokens**: 15-minute lifespan (`ACCESS_TOKEN_EXPIRE_MINUTES`), containing `sub` (User UUID), `type: "access"`, `iat`, `exp`, and `jti`.
+- **Hashed Refresh Token Sessions**: Refresh tokens are stored strictly as SHA-256 digests in PostgreSQL (`refresh_tokens`). Plaintext tokens exist only transiently at issuance time.
+- **Token Rotation & Token Family Tracking**: Every refresh operation revokes the presented token and creates a new token session linked via `rotated_from_id` within a persistent `family_id`.
+- **Reuse Detection**: Presenting an already-revoked refresh token triggers a security alert and immediately revokes the entire token family lineage, preventing session hijacking.
+- **Enumeration Protection**: Registration and login endpoints emit generic error messages to prevent email enumeration.
+
+### 2. API Endpoints
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/register` | Register a new user with Argon2id hash | No |
+| `POST` | `/api/v1/auth/login` | Authenticate email/password, emit JWT + refresh token | No |
+| `GET` | `/api/v1/auth/me` | Fetch authenticated caller profile (sanitized) | Yes (`Bearer`) |
+| `POST` | `/api/v1/auth/refresh` | Rotate refresh token session, emit new token pair | No |
+| `POST` | `/api/v1/auth/logout` | Revoke specific refresh token session | No |
+| `POST` | `/api/v1/auth/logout-all` | Revoke all active refresh sessions for user | Yes (`Bearer`) |
+| `POST` | `/api/v1/auth/change-password` | Update password and invalidate all active sessions | Yes (`Bearer`) |
+| `POST` | `/api/v1/auth/forgot-password` | Issue single-use password reset token | No |
+| `POST` | `/api/v1/auth/reset-password` | Consume reset token and set new password | No |
+| `POST` | `/api/v1/auth/verify-email` | Confirm email with single-use verification token | No |
+| `POST` | `/api/v1/auth/resend-verification` | Re-issue single-use verification token | No |
+
+### 3. Environment Configuration
+```env
+JWT_SECRET_KEY="generate-a-secure-random-64-character-hex-key-for-production"
+JWT_ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_DAYS=7
+PASSWORD_RESET_TOKEN_EXPIRE_MINUTES=60
+EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS=24
+```
+*(In production, `JWT_SECRET_KEY` must be explicitly configured with at least 32 characters.)*
 
 ---
 

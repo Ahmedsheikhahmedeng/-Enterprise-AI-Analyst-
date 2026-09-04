@@ -1,5 +1,6 @@
 from app.models.analysis import AnalysisRun, AnalysisStep
 from app.models.audit import AuditLog
+from app.models.auth import EmailVerificationToken, PasswordResetToken, RefreshToken
 from app.models.base import Base, TenantScopedMixin, TimestampMixin, UUIDPrimaryKeyMixin
 from app.models.conversation import Conversation, Message
 from app.models.data_source import DataSource
@@ -35,4 +36,7 @@ __all__ = [
     "AuditLog",
     "UsageEvent",
     "LLMRequest",
+    "RefreshToken",
+    "PasswordResetToken",
+    "EmailVerificationToken",
 ]

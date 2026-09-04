@@ -26,7 +26,10 @@ def test_environment_flags() -> None:
     assert dev_settings.is_production is False
     assert dev_settings.is_testing is False
 
-    prod_settings = Settings(ENVIRONMENT="production")
+    prod_settings = Settings(
+        ENVIRONMENT="production",
+        JWT_SECRET_KEY="a-sufficiently-long-production-secret-key-123456",
+    )
     assert prod_settings.is_production is True
     assert prod_settings.is_development is False
 

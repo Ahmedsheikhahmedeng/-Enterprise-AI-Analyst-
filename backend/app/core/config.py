@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -126,11 +126,54 @@ class Settings(BaseSettings):
         description="Flag enabling tests that require real running Docker services",
     )
 
+    # --------------------------------------------------------------------------
+    # 6. AUTHENTICATION & JWT
+    # --------------------------------------------------------------------------
+    JWT_SECRET_KEY: str = Field(
+        default="dev-insecure-jwt-secret-key-at-least-32-bytes-long-123456",
+        description="Cryptographic secret key for signing JWT access tokens",
+    )
+    JWT_ALGORITHM: str = Field(
+        default="HS256",
+        description="Cryptographic algorithm for JWT signatures",
+    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=15,
+        ge=1,
+        description="Lifespan of JWT access tokens in minutes",
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=7,
+        ge=1,
+        description="Lifespan of refresh tokens in days",
+    )
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=60,
+        ge=1,
+        description="Lifespan of password reset tokens in minutes",
+    )
+    EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS: int = Field(
+        default=24,
+        ge=1,
+        description="Lifespan of email verification tokens in hours",
+    )
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def validate_jwt_secret_key(cls, v: str, info: ValidationInfo) -> str:
+        env = info.data.get("ENVIRONMENT", "development")
+        if env == "production" and (not v or v.startswith("dev-insecure") or len(v) < 32):
+            raise ValueError(
+                "In production, JWT_SECRET_KEY must be an explicitly configured secret "
+                "with at least 32 characters."
+            )
         return v
 
     @property

@@ -160,6 +160,96 @@ python scripts/seed_rbac.py
 
 ---
 
+## 🏢 Multi-Tenant Authorization & Isolation (Task 6)
+
+The multi-tenant authorization layer establishes complete tenant isolation:
+**A user belonging to Organization A can never read, modify, delete, count, list, or infer resources belonging to Organization B.**
+
+### 1. The 5-Layer Authorization Pipeline
+
+To access any protected tenant resource, the request must successfully traverse all 5 layers:
+```text
+HTTP Request (Header: Authorization Bearer <token>, X-Organization-ID <uuid>)
+     │
+     ▼
+1. [User Authentication]        ───► get_current_user (JWT decoded, active user) -> 401 if invalid
+     │
+     ▼
+2. [Organization Validation]    ───► Exists in DB and is_active == True -> 403 if missing or inactive
+     │
+     ▼
+3. [Membership & Role Validation]───► User is member, role belongs to org -> 403 if non-member or role mismatch
+     │
+     ▼
+4. [Permission Enforcement]     ───► require_tenant_permission(perm) (effective permissions) -> 403 if unauthorized
+     │
+     ▼
+5. [Resource Tenant Enforcement]───► WHERE id = :id AND organization_id = :org_id -> 404 if cross-tenant (anti-IDOR)
+```
+
+### 2. Tenant Context (`TenantContext`)
+
+A request-scoped, immutable data structure injected via `get_current_tenant`:
+```python
+@dataclass(frozen=True, slots=True)
+class TenantContext:
+    organization_id: uuid.UUID
+    user_id: uuid.UUID
+    membership_id: uuid.UUID
+    role_id: uuid.UUID
+    role_name: str
+    permissions: frozenset[str]
+```
+
+### 3. Tenant Context Resolution Flow
+1. **`X-Organization-ID` Header**: Sanitized and parsed as a UUID. Malformed UUIDs are rejected immediately (`422 Unprocessable Content`) without querying the database.
+2. **Single-Membership Fallback**: If no header is provided and the user has exactly 1 membership, that organization is automatically used.
+3. **Ambiguous Context Rejection**: If the user belongs to multiple organizations and does not provide `X-Organization-ID`, access is securely rejected (`403 Forbidden`, `code="AMBIGUOUS_TENANT_CONTEXT"`).
+4. **Empty Membership Rejection**: Users with 0 memberships are rejected with `403 Forbidden`.
+
+### 4. Tenant-Scoped Repositories (`TenantScopedRepository[ModelType]`)
+
+All tenant-owned resource queries **must** pass through tenant-scoped repositories:
+- `get_by_id(session, id, organization_id)`: Appends `WHERE organization_id = :org_id`
+- `list(session, organization_id, skip, limit)`: Filters by `organization_id` **before** pagination
+- `count(session, organization_id)`: Scopes count strictly to tenant
+- `create(session, organization_id, **kwargs)`: Discards untrusted payload `organization_id` and binds strictly to trusted `TenantContext.organization_id`
+- `update(session, id, organization_id, **values)`: Updates only where both `id` and `organization_id` match; verifies rowcount
+- `delete(session, id, organization_id)`: Deletes only where both `id` and `organization_id` match; verifies rowcount
+
+### 5. Nested Resource Security
+
+For hierarchical resources (e.g. `DocumentChunk` within `Document`):
+Both the chunk and parent document must belong to the caller's organization, and `chunk.document_id == document_id`. Attempting to access `chunk_A` under `document_B` is rejected with `404 Not Found`.
+
+### 6. The 404 vs 403 Security Strategy
+- **Why 404 for cross-tenant resource lookups?** If User A queries `GET /api/v1/tenant/documents/{doc_B_id}`, returning `403 Forbidden` would confirm to the attacker that `doc_B_id` exists. Returning `404 Not Found` treats foreign resources as nonexistent, completely preventing resource enumeration and IDOR attacks.
+- **When is 403 returned?** When the user attempts to claim an organization context they do not belong to, or attempts an action their role lacks permission for.
+
+### 7. Evaluation of PostgreSQL Row-Level Security (RLS)
+The platform currently enforces tenant boundaries at the repository and service layer through:
+- Compulsory `organization_id` foreign keys and composite indexes on all tenant models (`TenantScopedMixin`).
+- Mandatory `TenantScopedRepository` query patterns where `organization_id` cannot be omitted.
+- Rowcount assertions on mutations.
+*Note on RLS:* Application-level enforcement allows clear API-level error envelopes (`404` vs `403`) and audit logging. PostgreSQL RLS using `SET LOCAL app.current_tenant_id` can be added as an optional defense-in-depth layer in future operations without breaking repository contracts.
+
+### 8. Qdrant Vector Isolation Preparation
+Vector retrieval is isolated at query generation time using `build_qdrant_tenant_filter(organization_id)`. All future semantic vector searches must apply this mandatory payload filter condition.
+
+### 9. Tenant API Demonstration Endpoints
+
+| Method | Endpoint | Permission Required | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/tenant/context` | Authenticated | Inspect caller's resolved `TenantContext` |
+| `POST` | `/api/v1/tenant/documents` | `documents.write` | Create a document strictly bound to active tenant |
+| `GET` | `/api/v1/tenant/documents` | `documents.read` | List tenant documents (scoped pagination) |
+| `GET` | `/api/v1/tenant/documents/count` | `documents.read` | Count tenant documents |
+| `GET` | `/api/v1/tenant/documents/{id}` | `documents.read` | Fetch document by ID (anti-IDOR 404 on cross-tenant) |
+| `PUT` | `/api/v1/tenant/documents/{id}` | `documents.write` | Update document (tenant-scoped) |
+| `DELETE` | `/api/v1/tenant/documents/{id}` | `documents.delete` | Delete document (tenant-scoped) |
+| `GET` | `/api/v1/tenant/documents/{doc_id}/chunks/{chunk_id}` | `documents.read` | Nested chunk traversal validation |
+
+
 ## 📦 Backing Infrastructure Services (Task 2)
 
 | Service | Engine Version | Role in Architecture |

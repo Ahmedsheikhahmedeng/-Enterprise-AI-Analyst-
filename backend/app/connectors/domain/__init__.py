@@ -1,0 +1,75 @@
+"""Domain package exports for Enterprise Data Connectors."""
+
+from app.connectors.domain.capabilities import ConnectorCapabilities
+from app.connectors.domain.enums import (
+    CapabilityType,
+    ConnectionStatus,
+    ConnectorType,
+    SyncStatus,
+    SyncType,
+)
+from app.connectors.domain.errors import (
+    ConnectionFailedError,
+    ConnectorError,
+    DataSourceNotFoundError,
+    FileProcessingError,
+    FormulaInjectionError,
+    InvalidConfigurationError,
+    QueryExecutionError,
+    QueryTimeoutError,
+    ResultSizeExceededError,
+    SchemaDiscoveryError,
+    SecretDecryptionError,
+    SyncError,
+    UnsupportedCapabilityError,
+)
+from app.connectors.domain.models import (
+    ColumnSchema,
+    ConnectionTestResult,
+    PreviewResult,
+    QueryRequest,
+    QueryResult,
+    SchemaModel,
+    SyncRunModel,
+    TableSchema,
+)
+from app.connectors.domain.protocols import (
+    DataConnector,
+    QueryProvider,
+    SchemaProvider,
+    SyncProvider,
+)
+
+__all__ = [
+    "ConnectorType",
+    "ConnectionStatus",
+    "SyncType",
+    "SyncStatus",
+    "CapabilityType",
+    "ConnectorCapabilities",
+    "ColumnSchema",
+    "TableSchema",
+    "SchemaModel",
+    "QueryRequest",
+    "QueryResult",
+    "PreviewResult",
+    "ConnectionTestResult",
+    "SyncRunModel",
+    "DataConnector",
+    "SchemaProvider",
+    "QueryProvider",
+    "SyncProvider",
+    "ConnectorError",
+    "ConnectionFailedError",
+    "SchemaDiscoveryError",
+    "QueryExecutionError",
+    "QueryTimeoutError",
+    "ResultSizeExceededError",
+    "SyncError",
+    "UnsupportedCapabilityError",
+    "DataSourceNotFoundError",
+    "InvalidConfigurationError",
+    "SecretDecryptionError",
+    "FileProcessingError",
+    "FormulaInjectionError",
+]

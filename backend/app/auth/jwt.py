@@ -39,23 +39,67 @@ def create_access_token(
     )
 
 
-def decode_access_token(token: str) -> dict[str, Any]:
-    """Decode and validate a JWT access token, enforcing signature, expiration, and token type.
+def decode_access_token(
+    token: str,
+    expected_issuer: str | None = None,
+    expected_audience: str | None = None,
+    leeway_seconds: int = 10,
+) -> dict[str, Any]:
+    """Decode and validate a JWT access token, enforcing signature, expiration, leeway, and token type.
 
+    Strictly rejects alg=none, algorithm mismatches, expired tokens, not-yet-valid tokens,
+    and missing standard claims (sub, exp, iat, jti).
     Raises UnauthorizedAppException on any verification or claim failure.
     """
     settings = get_settings()
+
+    # Enforce strict algorithm allowlist (never permit 'none')
+    allowed_algorithms = [settings.JWT_ALGORITHM]
+    if "none" in [alg.lower() for alg in allowed_algorithms]:
+        allowed_algorithms = [alg for alg in allowed_algorithms if alg.lower() != "none"]
+
+    options: dict[str, Any] = {
+        "verify_signature": True,
+        "require": ["sub", "exp", "iat", "jti"],
+        "verify_exp": True,
+        "verify_iat": True,
+        "verify_nbf": True,
+    }
+
     try:
         payload: dict[str, Any] = jwt.decode(
             token,
             settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM],
-            options={"require": ["sub", "exp", "iat", "jti"]},
+            algorithms=allowed_algorithms,
+            options=options,  # type: ignore[arg-type]
+            issuer=expected_issuer,
+            audience=expected_audience,
+            leeway=leeway_seconds,
         )
     except jwt.ExpiredSignatureError as err:
         raise UnauthorizedAppException(
             message="Access token has expired.",
             code="TOKEN_EXPIRED",
+        ) from err
+    except jwt.ImmatureSignatureError as err:
+        raise UnauthorizedAppException(
+            message="Access token is not yet valid (nbf/iat in future).",
+            code="TOKEN_NOT_YET_VALID",
+        ) from err
+    except jwt.InvalidAlgorithmError as err:
+        raise UnauthorizedAppException(
+            message="Token algorithm is not allowed or invalid.",
+            code="INVALID_ALGORITHM",
+        ) from err
+    except jwt.InvalidIssuerError as err:
+        raise UnauthorizedAppException(
+            message="Token issuer verification failed.",
+            code="INVALID_ISSUER",
+        ) from err
+    except jwt.InvalidAudienceError as err:
+        raise UnauthorizedAppException(
+            message="Token audience verification failed.",
+            code="INVALID_AUDIENCE",
         ) from err
     except jwt.PyJWTError as err:
         raise UnauthorizedAppException(

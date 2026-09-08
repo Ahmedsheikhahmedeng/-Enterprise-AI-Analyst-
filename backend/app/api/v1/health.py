@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 
 from fastapi import APIRouter, Request, Response, status
 
@@ -86,4 +87,26 @@ async def get_readiness(request: Request, response: Response) -> ReadinessRespon
             redis="ok" if redis_ok else "unavailable",
             qdrant="ok" if qdrant_ok else "unavailable",
         ),
+    )
+
+
+@router.get(
+    "/health/dependencies",
+    status_code=status.HTTP_200_OK,
+    summary="Granular Dependencies Health",
+    description="Returns detailed per-dependency status and probe latencies without bringing down unaffected routes.",
+)
+async def get_dependencies_health(request: Request) -> dict[str, Any]:
+    """Granular dependency health inspection."""
+    from app.observability.health import get_health_checker
+
+    engine = getattr(request.app.state, "db_engine", None)
+    redis_client = getattr(request.app.state, "redis_client", None)
+    qdrant_client = getattr(request.app.state, "qdrant_client", None)
+
+    checker = get_health_checker()
+    return await checker.check_dependencies(
+        db_engine=engine,
+        redis_client=redis_client,
+        qdrant_client=qdrant_client,
     )

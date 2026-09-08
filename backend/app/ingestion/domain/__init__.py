@@ -1,0 +1,73 @@
+"""Dataset Ingestion & Materialization domain package."""
+
+from app.ingestion.domain.enums import (
+    ColumnDataType,
+    DataClassification,
+    DatasetStatus,
+    DeduplicationStrategy,
+    IngestionMode,
+    IngestionStage,
+    PIIClassification,
+)
+from app.ingestion.domain.errors import (
+    DataQualityError,
+    DatasetAlreadyExistsError,
+    DatasetError,
+    DatasetNotFoundError,
+    DatasetNotReadyError,
+    DeduplicationError,
+    InvalidSchemaError,
+    LineageError,
+    MaterializationError,
+    NormalizationError,
+    ProfilingError,
+)
+from app.ingestion.domain.models import (
+    ColumnDefinition,
+    ColumnProfile,
+    DataQualityReport,
+    DatasetLineage,
+    DatasetProfile,
+    DatasetVersionModel,
+    IngestionChunk,
+    IngestionConfig,
+    MaterializationResult,
+)
+from app.ingestion.domain.protocols import (
+    DatasetReader,
+    DatasetWriter,
+    IncrementalIngestionProvider,
+)
+
+__all__ = [
+    "ColumnDataType",
+    "ColumnDefinition",
+    "ColumnProfile",
+    "DataClassification",
+    "DataQualityError",
+    "DataQualityReport",
+    "DatasetAlreadyExistsError",
+    "DatasetError",
+    "DatasetLineage",
+    "DatasetNotFoundError",
+    "DatasetNotReadyError",
+    "DatasetProfile",
+    "DatasetStatus",
+    "DatasetVersionModel",
+    "DatasetWriter",
+    "DatasetReader",
+    "DeduplicationError",
+    "DeduplicationStrategy",
+    "IncrementalIngestionProvider",
+    "IngestionChunk",
+    "IngestionConfig",
+    "IngestionMode",
+    "IngestionStage",
+    "InvalidSchemaError",
+    "LineageError",
+    "MaterializationError",
+    "MaterializationResult",
+    "NormalizationError",
+    "PIIClassification",
+    "ProfilingError",
+]

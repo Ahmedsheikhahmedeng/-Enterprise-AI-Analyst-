@@ -1,0 +1,20 @@
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INSUFFICIENT_EVIDENCE",
+    "message": "Unable to verify the claim with sufficient confidence against authoritative enterprise knowledge sources.",
+    "request_id": "req-mock-insuff-004",
+    "retryable": false,
+    "details": {
+      "confidence_score": 0.24,
+      "evidence_coverage": 0.15,
+      "threshold_required": 0.70
+    }
+  },
+  "meta": {
+    "request_id": "req-mock-insuff-004",
+    "trace_id": "trace-mock-insuff-004",
+    "timestamp": "2026-09-07T14:03:00Z"
+  }
+}

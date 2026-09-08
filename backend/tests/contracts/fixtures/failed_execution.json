@@ -1,0 +1,19 @@
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "PROCESSING_FAILED",
+    "message": "Execution pipeline failed due to downstream tool timeout.",
+    "request_id": "req-mock-fail-006",
+    "retryable": true,
+    "details": {
+      "stage": "EXECUTION",
+      "tool": "SQLAgent"
+    }
+  },
+  "meta": {
+    "request_id": "req-mock-fail-006",
+    "trace_id": "trace-mock-fail-006",
+    "timestamp": "2026-09-07T14:05:00Z"
+  }
+}

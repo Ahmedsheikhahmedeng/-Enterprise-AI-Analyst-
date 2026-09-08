@@ -1,0 +1,46 @@
+{
+  "success": true,
+  "data": {
+    "execution_id": "9d0b1c2d-4e5f-6a7b-8c9d-e0f1a2b3c4d5",
+    "answer": "Generated action requires human authorization: modifying production financial dataset thresholds.",
+    "status": "AWAITING_APPROVAL",
+    "decision": "APPROVAL_REQUIRED",
+    "confidence_score": 0.88,
+    "evidence_coverage": 0.85,
+    "citations": [
+      {
+        "id": "G1",
+        "source_type": "GRAPH",
+        "title": "governance_rules",
+        "snippet": "Financial schema alterations require Tier 3 Admin human sign-off.",
+        "trust": "DIRECT",
+        "confidence": 1.0
+      }
+    ],
+    "conflicts": [],
+    "warnings": [
+      "Sensitive action detected: approval policy triggered."
+    ],
+    "clarification_prompt": null,
+    "approval": {
+      "approval_required": true,
+      "approval_request_id": "appr-req-9912",
+      "risk_level": "HIGH",
+      "expires_at": "2026-09-08T14:00:00Z",
+      "required_approvers": 1,
+      "status": "PENDING"
+    },
+    "provenance": {
+      "policy_triggered": "FINANCIAL_DATASET_CHANGE"
+    },
+    "diagnostics": {
+      "governance_checked": true
+    }
+  },
+  "error": null,
+  "meta": {
+    "request_id": "req-mock-appr-003",
+    "trace_id": "trace-mock-appr-003",
+    "timestamp": "2026-09-07T14:02:00Z"
+  }
+}

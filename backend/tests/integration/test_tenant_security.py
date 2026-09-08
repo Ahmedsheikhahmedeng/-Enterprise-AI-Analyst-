@@ -20,7 +20,7 @@ from app.main import create_app
 from app.models.organization import Organization
 from app.models.role import OrganizationMember, Role
 from app.models.user import User
-from app.rbac.catalog import ROLE_ADMIN, ROLE_ANALYST, ROLE_VIEWER
+from app.rbac.catalog import ROLE_ADMIN, ROLE_ANALYST, ROLE_VIEWER, SYSTEM_PERMISSIONS
 from app.rbac.service import RBACService
 from app.repositories.document import DocumentRepository
 from app.tenancy.vector import build_qdrant_tenant_filter
@@ -838,7 +838,7 @@ async def test_tenant_context_resolution_no_n_plus_one(
         headers={"Authorization": f"Bearer {token}", "X-Organization-ID": str(org.id)},
     )
     assert resp.status_code == 200
-    assert len(resp.json()["permissions"]) == 26
+    assert len(resp.json()["permissions"]) == len(SYSTEM_PERMISSIONS)
 
 
 # ===========================================================================

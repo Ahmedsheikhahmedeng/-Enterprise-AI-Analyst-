@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import CursorResult, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document, DocumentChunk
@@ -16,6 +16,111 @@ class DocumentRepository(TenantScopedRepository[Document]):
 
     def __init__(self) -> None:
         super().__init__(model=Document)
+
+    async def get_by_id(
+        self,
+        session: AsyncSession,
+        id: uuid.UUID,
+        organization_id: uuid.UUID,
+        include_deleted: bool = False,
+    ) -> Document | None:
+        """Fetch a single document strictly scoped to tenant, excluding soft-deleted by default."""
+        stmt = select(Document).where(
+            Document.id == id,
+            Document.organization_id == organization_id,
+        )
+        if not include_deleted:
+            stmt = stmt.where(
+                Document.deleted_at.is_(None),
+                Document.status != "deleted",
+            )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def list(
+        self,
+        session: AsyncSession,
+        organization_id: uuid.UUID,
+        skip: int = 0,
+        limit: int = 100,
+        include_deleted: bool = False,
+    ) -> Sequence[Document]:
+        """List documents for organization, excluding soft-deleted documents by default."""
+        stmt = (
+            select(Document)
+            .where(Document.organization_id == organization_id)
+            .order_by(Document.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        if not include_deleted:
+            stmt = stmt.where(
+                Document.deleted_at.is_(None),
+                Document.status != "deleted",
+            )
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+    async def count(
+        self,
+        session: AsyncSession,
+        organization_id: uuid.UUID,
+        include_deleted: bool = False,
+    ) -> int:
+        """Count tenant documents, excluding soft-deleted documents by default."""
+        stmt = (
+            select(func.count())
+            .select_from(Document)
+            .where(Document.organization_id == organization_id)
+        )
+        if not include_deleted:
+            stmt = stmt.where(
+                Document.deleted_at.is_(None),
+                Document.status != "deleted",
+            )
+        result = await session.execute(stmt)
+        return int(result.scalar_one() or 0)
+
+    async def get_by_checksum(
+        self,
+        session: AsyncSession,
+        organization_id: uuid.UUID,
+        sha256: str,
+        include_deleted: bool = False,
+    ) -> Document | None:
+        """Find an active document by SHA-256 hash strictly within the tenant scope."""
+        stmt = select(Document).where(
+            Document.organization_id == organization_id,
+            Document.sha256 == sha256,
+        )
+        if not include_deleted:
+            stmt = stmt.where(
+                Document.deleted_at.is_(None),
+                Document.status != "deleted",
+            )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def soft_delete(
+        self,
+        session: AsyncSession,
+        id: uuid.UUID,
+        organization_id: uuid.UUID,
+    ) -> bool:
+        """Soft-delete document by marking status='deleted' and recording deleted_at timestamp."""
+        stmt = (
+            update(Document)
+            .where(
+                Document.id == id,
+                Document.organization_id == organization_id,
+                Document.deleted_at.is_(None),
+            )
+            .values(status="deleted", deleted_at=func.now())
+        )
+        result = await session.execute(stmt)
+        rowcount = result.rowcount if isinstance(result, CursorResult) else 1
+        await session.flush()
+        return bool(rowcount > 0)
 
     async def get_chunk(
         self,

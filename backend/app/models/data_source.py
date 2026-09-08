@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import ForeignKey, Index, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -50,3 +51,64 @@ class DataSource(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin):
         back_populates="data_sources",
     )
     creator: Mapped["User | None"] = relationship("User")
+    sync_runs: Mapped[list["DataSourceSyncRun"]] = relationship(
+        "DataSourceSyncRun",
+        back_populates="data_source",
+        cascade="all, delete-orphan",
+    )
+
+
+class DataSourceSyncRun(Base, UUIDPrimaryKeyMixin, TenantScopedMixin, TimestampMixin):
+    """Execution history of a background synchronization for a DataSource."""
+
+    __tablename__ = "data_source_sync_runs"
+    __table_args__ = (
+        Index("ix_ds_sync_runs_org_ds", "organization_id", "data_source_id"),
+        Index("ix_ds_sync_runs_org_status", "organization_id", "status"),
+        Index("ix_ds_sync_runs_created_at", "created_at"),
+    )
+
+    data_source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("data_sources.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    sync_type: Mapped[str] = mapped_column(
+        String(50),
+        default="full",
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(
+        String(50),
+        default="pending",
+        nullable=False,
+    )
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    rows_synced: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )
+    error_message: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    meta_info: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
+
+    # Relationships
+    data_source: Mapped["DataSource"] = relationship(
+        "DataSource",
+        back_populates="sync_runs",
+    )

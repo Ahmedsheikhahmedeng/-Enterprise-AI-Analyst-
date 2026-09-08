@@ -7,8 +7,13 @@ backend/.venv/
 
 # Environments & Secrets
 .env
-*.env
+.env.production
+.env.local
+*.env.local
 !.env.example
+!.env.development
+!.env.test
+!.env.production.example
 
 # Caches
 .pytest_cache/
@@ -20,3 +25,11 @@ backend/.venv/
 .DS_Store
 .idea/
 .vscode/
+
+# Local Storage Directories (Runtime artifacts)
+/storage/
+/backend/storage/
+infra/bin/
+node_modules/
+frontend/node_modules/
+frontend/.next/

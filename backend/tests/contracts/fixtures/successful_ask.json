@@ -1,0 +1,49 @@
+{
+  "success": true,
+  "data": {
+    "execution_id": "7b8f9e1a-2c3d-4e5f-a6b7-c8d9e0f1a2b3",
+    "answer": "Net revenue for Q3 grew by 14.2% to $12.4M [S1], driven primarily by enterprise software subscriptions [R1].",
+    "status": "COMPLETED",
+    "decision": "ANSWER",
+    "confidence_score": 0.96,
+    "evidence_coverage": 0.92,
+    "citations": [
+      {
+        "id": "S1",
+        "source_type": "SQL",
+        "title": "financial_records",
+        "snippet": "SELECT SUM(revenue) FROM financial_records WHERE quarter = 'Q3';",
+        "trust": "DIRECT",
+        "confidence": 1.0
+      },
+      {
+        "id": "R1",
+        "source_type": "RAG",
+        "title": "q3_shareholder_letter.pdf",
+        "snippet": "Enterprise subscription segment revenue accelerated to $8.2M during the third quarter.",
+        "trust": "DIRECT",
+        "confidence": 0.94
+      }
+    ],
+    "conflicts": [],
+    "warnings": [],
+    "clarification_prompt": null,
+    "approval": null,
+    "provenance": {
+      "strategy": "HYBRID",
+      "mode": "AUTO",
+      "stages": ["UNDERSTANDING", "SEMANTIC", "GRAPH", "PLANNING", "EXECUTION", "EVIDENCE", "VERIFICATION", "RESPONSE"]
+    },
+    "diagnostics": {
+      "latency_ms": 320,
+      "sql_executed": true,
+      "rag_chunks_used": 2
+    }
+  },
+  "error": null,
+  "meta": {
+    "request_id": "req-mock-success-001",
+    "trace_id": "trace-mock-success-001",
+    "timestamp": "2026-09-07T14:00:00Z"
+  }
+}

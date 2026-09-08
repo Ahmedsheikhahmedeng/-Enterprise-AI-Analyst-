@@ -34,6 +34,10 @@ from app.db.redis import (
     close_redis_client,
     create_redis_client,
 )
+from app.retrieval.service import DenseRetrievalService
+from app.vectorstore.config import VectorStoreConfig
+from app.vectorstore.providers.qdrant import QdrantVectorStoreProvider
+from app.vectorstore.service import VectorStoreService
 
 
 async def _verify_startup_connectivity(app: FastAPI, settings: Settings) -> None:
@@ -111,7 +115,112 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if getattr(app.state, "qdrant_client", None) is None and not settings.is_testing:
         app.state.qdrant_client = create_qdrant_client(settings)
 
+    if getattr(app.state, "vector_store_service", None) is None:
+        client = getattr(app.state, "qdrant_client", None)
+        if client is not None:
+            vs_config = VectorStoreConfig.from_settings(settings)
+            provider = QdrantVectorStoreProvider(client=client, config=vs_config)
+            app.state.vector_store_provider = provider
+            app.state.vector_store_service = VectorStoreService(config=vs_config, provider=provider)
+
+    if getattr(app.state, "dense_retrieval_service", None) is None:
+        vs_svc = getattr(app.state, "vector_store_service", None)
+        if vs_svc is not None:
+            emb_svc = getattr(app.state, "embedding_service", None)
+            if emb_svc is None:
+                from app.services.embedding_pipeline import create_default_embedding_service
+
+                redis_cli = getattr(app.state, "redis_client", None)
+                emb_svc = create_default_embedding_service(
+                    settings=settings, redis_client=redis_cli
+                )
+                app.state.embedding_service = emb_svc
+            app.state.dense_retrieval_service = DenseRetrievalService(
+                embedding_service=emb_svc,
+                vector_store_service=vs_svc,
+            )
+
+    if getattr(app.state, "reranker_service", None) is None and settings.RERANKING_ENABLED:
+        from app.reranking.config import get_reranker_config
+        from app.reranking.service import CrossEncoderRerankingService
+
+        app.state.reranker_service = CrossEncoderRerankingService(config=get_reranker_config())
+
+    if getattr(app.state, "hybrid_retrieval_service", None) is None:
+        dense_svc = getattr(app.state, "dense_retrieval_service", None)
+        vs_svc = getattr(app.state, "vector_store_service", None)
+        if dense_svc is not None and vs_svc is not None:
+            from app.retrieval.hybrid.service import HybridRetrievalService
+            from app.retrieval.sparse.service import SparseRetrievalService
+
+            sparse_svc = SparseRetrievalService(
+                vector_store_service=vs_svc,
+                embedding_service=getattr(app.state, "embedding_service", None),
+            )
+            app.state.sparse_retrieval_service = sparse_svc
+            reranker_svc = getattr(app.state, "reranker_service", None)
+
+            qu_svc = None
+            if settings.QUERY_UNDERSTANDING_ENABLED:
+                from app.query.config import get_query_understanding_config
+                from app.query.service import QueryUnderstandingService
+
+                qu_svc = QueryUnderstandingService(config=get_query_understanding_config())
+                app.state.query_understanding_service = qu_svc
+
+            hybrid_svc = HybridRetrievalService(
+                dense_service=dense_svc,
+                sparse_service=sparse_svc,
+                reranker_service=reranker_svc,
+                query_understanding_service=qu_svc,
+            )
+            if qu_svc is not None:
+                from app.query.multi_retrieval import MultiQueryRetrievalService
+
+                mq_svc = MultiQueryRetrievalService(
+                    hybrid_service=hybrid_svc,
+                    reranker_service=reranker_svc,
+                )
+                hybrid_svc.multi_query_service = mq_svc
+                app.state.multi_query_service = mq_svc
+
+            app.state.hybrid_retrieval_service = hybrid_svc
+
+    if getattr(app.state, "rag_service", None) is None and settings.RAG_ENABLED:
+        rag_hybrid_svc = getattr(app.state, "hybrid_retrieval_service", None)
+        if rag_hybrid_svc is not None:
+            from app.rag.config import get_rag_config
+            from app.rag.service import RAGService
+
+            app.state.rag_service = RAGService(
+                hybrid_retrieval_service=rag_hybrid_svc,
+                query_understanding_service=getattr(app.state, "query_understanding_service", None),
+                config=get_rag_config(),
+            )
+
+    if getattr(app.state, "sql_agent_service", None) is None and settings.SQL_AGENT_ENABLED:
+        from app.sql_agent.config import get_sql_agent_config
+        from app.sql_agent.service import SQLAgentService
+
+        app.state.sql_agent_service = SQLAgentService(
+            config=get_sql_agent_config(),
+        )
+
+    if getattr(app.state, "analyst_service", None) is None and settings.ANALYST_ENABLED:
+        sql_svc = getattr(app.state, "sql_agent_service", None)
+        rag_svc = getattr(app.state, "rag_service", None)
+        if sql_svc is not None and rag_svc is not None:
+            from app.analyst.config import get_analyst_config
+            from app.analyst.service import AIAnalystService
+
+            app.state.analyst_service = AIAnalystService(
+                sql_service=sql_svc,
+                rag_service=rag_svc,
+                config=get_analyst_config(),
+            )
+
     # 4. Verify connectivity with retry loop if not in unit testing
+
     if not settings.is_testing:
         await _verify_startup_connectivity(app, settings)
 
@@ -159,17 +268,20 @@ def create_app() -> FastAPI:
     )
 
     # 1. Register Core Middlewares
+    from app.observability.middleware import ObservabilityMiddleware
+    from app.security.cors import get_hardened_cors_kwargs
+    from app.security.headers import SecurityHeadersMiddleware
+
+    fastapi_app.add_middleware(SecurityHeadersMiddleware)
+    fastapi_app.add_middleware(ObservabilityMiddleware)
     fastapi_app.add_middleware(CorrelationIdMiddleware)
 
-    # 2. Register CORS Middleware
-    fastapi_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+    # 2. Register CORS Middleware with hardened options
+    cors_kwargs = get_hardened_cors_kwargs(
+        allowed_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["X-Request-ID", "X-Trace-ID"],
     )
+    fastapi_app.add_middleware(CORSMiddleware, **cors_kwargs)
 
     # 3. Register Global Exception Handlers
     fastapi_app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]

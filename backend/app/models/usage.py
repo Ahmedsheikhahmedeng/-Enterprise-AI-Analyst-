@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKey,
     Index,
@@ -83,6 +84,20 @@ class LLMRequest(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
         nullable=True,
         index=True,
     )
+    trace_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
+    span_id: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+    request_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        index=True,
+    )
     provider: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
@@ -114,6 +129,21 @@ class LLMRequest(Base, UUIDPrimaryKeyMixin, TenantScopedMixin):
     status: Mapped[str] = mapped_column(
         String(50),
         default="success",
+        nullable=False,
+    )
+    task_type: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+    )
+    fallback_used: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    cache_hit: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
         nullable=False,
     )
     metadata_: Mapped[dict[str, Any] | None] = mapped_column(

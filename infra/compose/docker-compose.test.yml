@@ -1,0 +1,51 @@
+# ==============================================================================
+# Enterprise AI Analyst - Automated Test & CI Docker Compose Stack
+# Fast, ephemeral containers for unit, integration, and smoke test suites
+# ==============================================================================
+
+name: enterprise-ai-analyst-test
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: analyst_test_postgres
+    tmpfs:
+      - /var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=enterprise_ai_analyst_test
+    networks:
+      - test_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d enterprise_ai_analyst_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: analyst_test_redis
+    networks:
+      - test_net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    container_name: analyst_test_qdrant
+    networks:
+      - test_net
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+networks:
+  test_net:
+    name: analyst_test_net
+    driver: bridge

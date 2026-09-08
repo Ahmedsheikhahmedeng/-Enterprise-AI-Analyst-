@@ -26,9 +26,14 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Middleware ensuring every HTTP request carries validated request_id and trace_id."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        # Resolve or generate correlation IDs
         raw_req_id = request.headers.get(HEADER_REQUEST_ID)
         raw_trace_id = request.headers.get(HEADER_TRACE_ID)
+        if not raw_trace_id and "traceparent" in request.headers:
+            from app.observability.context import parse_w3c_traceparent
+
+            parsed_tp = parse_w3c_traceparent(request.headers.get("traceparent"))
+            if parsed_tp:
+                raw_trace_id = parsed_tp[0]
 
         request_id = _sanitize_id(raw_req_id)
         trace_id = _sanitize_id(raw_trace_id)

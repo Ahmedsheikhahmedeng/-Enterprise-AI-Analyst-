@@ -44,6 +44,23 @@ class ValidationAppException(AppException):
         )
 
 
+class BadRequestAppException(AppException):
+    """Raised when request payload or parameters are semantically invalid."""
+
+    def __init__(
+        self,
+        message: str = "Bad request",
+        code: str = "BAD_REQUEST",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=code,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            details=details,
+        )
+
+
 class NotFoundAppException(AppException):
     """Raised when a requested resource does not exist."""
 
@@ -91,6 +108,40 @@ class ForbiddenAppException(AppException):
             message=message,
             code=code,
             status_code=status.HTTP_403_FORBIDDEN,
+            details=details,
+        )
+
+
+class ConflictAppException(AppException):
+    """Raised when an operation conflicts with current state (e.g. duplicate resource)."""
+
+    def __init__(
+        self,
+        message: str = "Resource conflict",
+        code: str = "CONFLICT",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=code,
+            status_code=status.HTTP_409_CONFLICT,
+            details=details,
+        )
+
+
+class PayloadTooLargeAppException(AppException):
+    """Raised when uploaded file or request payload exceeds permitted size limit."""
+
+    def __init__(
+        self,
+        message: str = "Payload exceeds maximum allowed size",
+        code: str = "PAYLOAD_TOO_LARGE",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=code,
+            status_code=getattr(status, "HTTP_413_CONTENT_TOO_LARGE", 413),
             details=details,
         )
 

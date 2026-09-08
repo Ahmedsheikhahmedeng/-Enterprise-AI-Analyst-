@@ -1,0 +1,58 @@
+{
+  "success": true,
+  "data": {
+    "execution_id": "0e1c2d3e-5f6a-7b8c-9d0e-f1a2b3c4d5e6",
+    "answer": "A discrepancy was identified between SQL accounting ledgers ($14.2M) and the annual summary slide ($15.0M) regarding FY25 net margins.",
+    "status": "COMPLETED",
+    "decision": "CONFLICT_DETECTED",
+    "confidence_score": 0.52,
+    "evidence_coverage": 0.82,
+    "citations": [
+      {
+        "id": "S1",
+        "source_type": "SQL",
+        "title": "ledger_entries",
+        "snippet": "Net margin value computed as $14.2M.",
+        "trust": "DIRECT",
+        "confidence": 0.99
+      },
+      {
+        "id": "R1",
+        "source_type": "RAG",
+        "title": "executive_presentation.pdf",
+        "snippet": "FY25 Net margin estimated at approximately $15.0M.",
+        "trust": "DERIVED",
+        "confidence": 0.85
+      }
+    ],
+    "conflicts": [
+      {
+        "conflict_id": "conf-001",
+        "field": "net_margin",
+        "source_a": "SQL:ledger_entries",
+        "value_a": 14200000,
+        "source_b": "RAG:executive_presentation.pdf",
+        "value_b": 15000000,
+        "severity": "HIGH",
+        "description": "Ledger records differ from presentation slide estimates."
+      }
+    ],
+    "warnings": [
+      "Conflicting numbers detected across structured and unstructured sources."
+    ],
+    "clarification_prompt": null,
+    "approval": null,
+    "provenance": {
+      "conflict_resolution_applied": false
+    },
+    "diagnostics": {
+      "conflicts_count": 1
+    }
+  },
+  "error": null,
+  "meta": {
+    "request_id": "req-mock-conf-005",
+    "trace_id": "trace-mock-conf-005",
+    "timestamp": "2026-09-07T14:04:00Z"
+  }
+}

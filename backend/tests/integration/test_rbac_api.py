@@ -33,6 +33,7 @@ from app.rbac.catalog import (
     ROLE_ADMIN,
     ROLE_ANALYST,
     ROLE_VIEWER,
+    SYSTEM_PERMISSIONS,
 )
 from app.rbac.repository import RBACRepository
 from app.rbac.service import RBACService
@@ -595,8 +596,8 @@ async def test_single_query_effective_permissions_no_n_plus_one(
     permissions = await repo.get_effective_user_permissions(
         db_session, user_id=user.id, organization_id=org.id
     )
-    # Admin has all 26 permissions returned at once
-    assert len(permissions) == 26
+    # Admin has all system permissions returned at once
+    assert len(permissions) == len(SYSTEM_PERMISSIONS)
 
 
 @pytest.mark.asyncio

@@ -177,6 +177,10 @@ async def get_current_tenant(
     )
 
 
+# Backward-compatible alias for tenant context dependency
+get_tenant_context = get_current_tenant
+
+
 def require_tenant_permission(
     permission_name: str,
 ) -> Callable[..., Coroutine[Any, Any, TenantContext]]:

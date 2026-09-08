@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "data": {
+    "execution_id": "8c9a0b1c-3d4e-5f6a-b7c8-d9e0f1a2b3c4",
+    "answer": "Revenue data for APAC is available ($4.1M) [S1], but EMEA regional metrics are currently unindexed in the knowledge store.",
+    "status": "COMPLETED",
+    "decision": "PARTIAL_ANSWER",
+    "confidence_score": 0.68,
+    "evidence_coverage": 0.55,
+    "citations": [
+      {
+        "id": "S1",
+        "source_type": "SQL",
+        "title": "apac_sales",
+        "snippet": "SELECT SUM(amount) FROM apac_sales WHERE period = '2026';",
+        "trust": "DIRECT",
+        "confidence": 0.98
+      }
+    ],
+    "conflicts": [],
+    "warnings": [
+      "Missing data coverage for EMEA division in current reporting index."
+    ],
+    "clarification_prompt": null,
+    "approval": null,
+    "provenance": {
+      "strategy": "SQL",
+      "missing_coverage": ["EMEA"]
+    },
+    "diagnostics": {
+      "latency_ms": 280
+    }
+  },
+  "error": null,
+  "meta": {
+    "request_id": "req-mock-partial-002",
+    "trace_id": "trace-mock-partial-002",
+    "timestamp": "2026-09-07T14:01:00Z"
+  }
+}
